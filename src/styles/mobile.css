@@ -1,0 +1,77 @@
+/* LinguaChat Mobile-First Stylesheet */
+
+:root {
+  --app-height: 100dvh;
+  --header-height: 4rem;
+  --bottom-nav-height: 4.25rem;
+  --mobile-sidebar-width: 280px;
+}
+
+/* Touch targets and scrolling */
+@media (max-width: 768px) {
+  html, body {
+    height: 100%;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 16px));
+  }
+
+  .mobile-safe-top {
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+  }
+
+  /* Form controls stacking */
+  .mobile-form-stack {
+    display: flex;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Button touch optimization */
+  button, a, input, select, textarea {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  /* Chat window mobile container */
+  .mobile-chat-container {
+    height: calc(100dvh - var(--header-height) - var(--bottom-nav-height));
+  }
+
+  /* Overlay backdrop blur for drawers */
+  .mobile-drawer-backdrop {
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}
+
+/* Mobile swipe animation classes */
+.slide-in-left {
+  animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.slide-out-left {
+  animation: slideOutLeft 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
