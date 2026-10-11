@@ -11,12 +11,13 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+const metaUrl = typeof import.meta !== 'undefined' && import.meta?.url ? import.meta.url : `file://${process.cwd()}/server.ts`;
+const require = createRequire(metaUrl);
 const { authenticator } = require('otplib');
 import QRCode from 'qrcode';
 import { translateText, detectLanguage } from './backend/integrations/googleTranslate.js';
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename = typeof import.meta !== 'undefined' && import.meta?.url ? fileURLToPath(import.meta.url) : path.join(process.cwd(), 'server.ts');
 const __dirname = path.dirname(__filename);
 
 const app = express();
@@ -2704,7 +2705,9 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.env.VERCEL !== '1' && !process.env.AWS_LAMBDA_FUNCTION_NAME && process.env.NODE_ENV !== 'test') {
+  startServer();
+}
 
 export default app;
 export { app };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, LogIn, AlertCircle, Sparkles } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useAppState } from '../../store/appState';
 import { validators } from '../../utils/validators';
@@ -21,19 +21,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
     e.preventDefault();
     setGeneralError(null);
 
-    const emailCheck = validators.email(email);
+    const cleanEmail = email.trim().toLowerCase();
+    const emailCheck = validators.email(cleanEmail);
     const pwdCheck = validators.password(password, 6);
 
     if (!emailCheck.isValid) {
-      setGeneralError(emailCheck.error || 'Invalid email');
+      setGeneralError(emailCheck.error || 'Please enter a valid email address');
       return;
     }
     if (!pwdCheck.isValid) {
-      setGeneralError(pwdCheck.error || 'Invalid password');
+      setGeneralError(pwdCheck.error || 'Password must be at least 6 characters');
       return;
     }
 
-    const res = await login({ email, password });
+    const res = await login({ email: cleanEmail, password });
     if (res.success) {
       onSuccess?.();
     } else {
@@ -41,25 +42,87 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    // Quick demonstration mock authentication for social providers
-    setEmail(`demo.${provider.toLowerCase()}@linguachat.ai`);
-    setPassword('social_demo_pass');
-    setTimeout(() => {
-      login({ email: `alex.${provider.toLowerCase()}@linguachat.ai`, password: 'password123' }).then((res) => {
-        if (res.success) onSuccess?.();
-      });
-    }, 300);
+  const handleSocialLogin = async (provider: string) => {
+    setGeneralError(null);
+    const demoEmail = `demo.${provider.toLowerCase()}@linguachat.ai`;
+    setEmail(demoEmail);
+    setPassword('password123');
+    const res = await login({ email: demoEmail, password: 'password123' });
+    if (res.success) {
+      onSuccess?.();
+    } else {
+      setGeneralError(res.error || `${provider} sign-in failed`);
+    }
+  };
+
+  const handleQuickDemo = (demoEmail: string) => {
+    setGeneralError(null);
+    setEmail(demoEmail);
+    setPassword('password123');
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {(generalError || authError) && (
         <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
           <span>{generalError || authError}</span>
         </div>
       )}
+
+      {/* Quick Mobile Demo Accounts Picker */}
+      <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50">
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300 mb-2">
+          <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+          <span>Quick 1-Tap Demo Logins:</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => handleQuickDemo('alex.chen@linguachat.ai')}
+            className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+              email === 'alex.chen@linguachat.ai'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-300'
+            }`}
+          >
+            Alex (Admin)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickDemo('thirisha.p@linguachat.ai')}
+            className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+              email === 'thirisha.p@linguachat.ai'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-300'
+            }`}
+          >
+            Thirisha (Admin)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickDemo('priya.sharma@globaltech.com')}
+            className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+              email === 'priya.sharma@globaltech.com'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-300'
+            }`}
+          >
+            Priya (Hindi)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickDemo('karthik.s@innolabs.io')}
+            className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+              email === 'karthik.s@innolabs.io'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-300'
+            }`}
+          >
+            Karthik (Tamil)
+          </button>
+        </div>
+      </div>
 
       {/* Email Input */}
       <div>
@@ -68,14 +131,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
           <span>Email Address</span>
         </label>
         <div className="relative">
-          <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="alex.chen@linguachat.ai"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="email"
+            autoComplete="email"
             required
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all min-h-[44px]"
           />
         </div>
       </div>
@@ -87,14 +155,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
           <span>Password</span>
         </label>
         <div className="relative">
-          <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            autoComplete="current-password"
             required
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all min-h-[44px]"
           />
         </div>
       </div>
@@ -131,7 +203,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+        className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-h-[44px]"
       >
         {isLoading ? (
           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -157,21 +229,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
           <button
             type="button"
             onClick={() => handleSocialLogin('Google')}
-            className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-1.5"
+            className="py-2.5 px-3 min-h-[44px] rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-1.5"
           >
             <span>Google</span>
           </button>
           <button
             type="button"
             onClick={() => handleSocialLogin('GitHub')}
-            className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-1.5"
+            className="py-2.5 px-3 min-h-[44px] rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-1.5"
           >
             <span>GitHub</span>
           </button>
           <button
             type="button"
             onClick={() => handleSocialLogin('Microsoft')}
-            className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-1.5"
+            className="py-2.5 px-3 min-h-[44px] rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-1.5"
           >
             <span>Microsoft</span>
           </button>
@@ -184,7 +256,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
           <button
             type="button"
             onClick={onSwitchToRegister}
-            className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 min-h-[36px]"
           >
             <span>New to LinguaChat? Create Account →</span>
           </button>

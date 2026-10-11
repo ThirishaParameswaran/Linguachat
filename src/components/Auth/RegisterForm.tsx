@@ -41,19 +41,32 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
   const isFormValid = usernameVal.isValid && emailVal.isValid && passwordVal.isValid;
 
   const handleRandomizeAvatar = () => {
+    setGeneralError(null);
     const styles = ['bottts', 'adventurer', 'lorelei', 'personas', 'thumbs'];
     const style = styles[Math.floor(Math.random() * styles.length)];
-    const seed = (username.trim() || 'user') + '_' + Math.floor(Math.random() * 9000 + 1000);
+    const cleanUser = username.trim() || 'user';
+    const seed = `${cleanUser}_${Math.floor(Math.random() * 9000 + 1000)}`;
     setAvatar(`https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}`);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGeneralError(null);
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (!file.type.startsWith('image/')) return;
+      if (!file.type.startsWith('image/')) {
+        setGeneralError('Please upload a valid image file (PNG, JPG, WebP, SVG).');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setGeneralError('Image file size must be less than 5MB.');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (ev) => {
         if (ev.target?.result) setAvatar(ev.target.result as string);
+      };
+      reader.onerror = () => {
+        setGeneralError('Failed to read image file. Please try a different photo.');
       };
       reader.readAsDataURL(file);
     }
@@ -61,6 +74,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setGeneralError(null);
 
     const userCheck = validators.username(username);
@@ -68,35 +82,36 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
     const pwdCheck = validators.password(password, 6);
 
     if (!userCheck.isValid) {
-      setGeneralError(userCheck.error || 'Invalid username');
+      setGeneralError(userCheck.error || 'Please enter a valid username');
       return;
     }
     if (!emailCheck.isValid) {
-      setGeneralError(emailCheck.error || 'Invalid email');
+      setGeneralError(emailCheck.error || 'Please enter a valid email address');
       return;
     }
     if (!pwdCheck.isValid) {
-      setGeneralError(pwdCheck.error || 'Password too short');
+      setGeneralError(pwdCheck.error || 'Password must be at least 6 characters');
       return;
     }
 
     const res = await register({
-      username,
-      email,
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
       password,
       preferredLanguage,
+      nativeLanguage: preferredLanguage,
       avatar,
     });
 
     if (res.success) {
       onSuccess?.();
     } else {
-      setGeneralError(res.error || 'Registration failed');
+      setGeneralError(res.error || 'Registration failed. Please check your credentials and try again.');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3.5">
+    <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
       {(generalError || authError) && (
         <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
@@ -160,14 +175,18 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
           Full Name / Username
         </label>
         <div className="relative">
-          <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="e.g. Maria Gonzalez"
+            autoCapitalize="words"
+            autoCorrect="off"
+            spellCheck={false}
+            autoComplete="name"
             required
-            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${
+            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all min-h-[44px] ${
               usernameVal.errorMessage
                 ? 'border-rose-400 focus:ring-rose-400'
                 : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
@@ -185,14 +204,19 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
           Email Address
         </label>
         <div className="relative">
-          <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="maria@example.com"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="email"
+            autoComplete="email"
             required
-            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${
+            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all min-h-[44px] ${
               emailVal.errorMessage
                 ? 'border-rose-400 focus:ring-rose-400'
                 : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
@@ -210,14 +234,18 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
           Password (min 6 characters)
         </label>
         <div className="relative">
-          <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            autoComplete="new-password"
             required
-            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${
+            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all min-h-[44px] ${
               passwordVal.errorMessage
                 ? 'border-rose-400 focus:ring-rose-400'
                 : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
@@ -239,7 +267,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
           <select
             value={preferredLanguage}
             onChange={(e) => setPreferredLanguage(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none min-h-[44px]"
           >
             <option value="en">English (English)</option>
             <option value="es">Spanish (Español)</option>
@@ -278,7 +306,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
             <button
               type="button"
               onClick={onSwitchToLogin}
-              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline min-h-[36px]"
             >
               Sign In
             </button>
