@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User, Mail, Lock, Globe, UserPlus, AlertCircle, Camera, Sparkles, RefreshCw, Upload } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useAppState } from '../../store/appState';
 import { validators } from '../../utils/validators';
 import { ButtonValidator } from '../ButtonValidator';
 import { useButtonValidation } from '../../hooks/useButtonValidation';
@@ -11,6 +12,7 @@ interface RegisterFormProps {
 }
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin }) => {
+  const { addNotification } = useAppState();
   const { register, isLoading, error: authError } = useAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -104,6 +106,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
     });
 
     if (res.success) {
+      addNotification({
+        title: 'Account Created',
+        message: `Welcome to LinguaChat, ${username.trim()}! Your account is active.`,
+        type: 'success',
+      });
       onSuccess?.();
     } else {
       setGeneralError(res.error || 'Registration failed. Please check your credentials and try again.');

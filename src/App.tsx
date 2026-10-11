@@ -84,23 +84,7 @@ export default function App() {
 
   // Initialize dynamic backend data on first run
   useEffect(() => {
-    // 1. Auto-login or verify default user session
-    if (!user) {
-      const defaultUser: User = {
-        userId: 'usr_thirisha',
-        username: 'Thirisha P',
-        email: 'thirisha.p@linguachat.ai',
-        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-        preferredLanguage: 'en',
-        cameraEnabled: true,
-        microphoneEnabled: true,
-        googleCalendarConnected: true,
-        isOnline: true,
-        lastSeen: 'Just now',
-        role: 'user',
-      };
-      setUser(defaultUser);
-    }
+    // 1. Fetch live debt items
 
     // 2. Fetch live debt items
     fetchDebtItems().then((items) => {

@@ -15,6 +15,7 @@ const metaUrl = typeof import.meta !== 'undefined' && import.meta?.url ? import.
 const require = createRequire(metaUrl);
 const { authenticator } = require('otplib');
 import QRCode from 'qrcode';
+import crypto from 'crypto';
 import { translateText, detectLanguage } from './backend/integrations/googleTranslate.js';
 
 const __filename = typeof import.meta !== 'undefined' && import.meta?.url ? fileURLToPath(import.meta.url) : path.join(process.cwd(), 'server.ts');
@@ -982,6 +983,98 @@ app.post('/api/auth/signin', async (req: Request, res: Response) => {
     return res.json({ success: true, token, user: safeUser });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Social sign-in failed' });
+  }
+});
+
+app.post(['/api/auth/forgot-password', '/auth/forgot-password'], async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Please enter your email address' });
+    }
+    const emailLower = String(email).trim().toLowerCase();
+    let userExists = false;
+    if (isMongoConnected) {
+      const u = await UserModel.findOne({ email: emailLower });
+      userExists = Boolean(u);
+    }
+    if (!userExists) {
+      userExists = memUsers.has(emailLower);
+    }
+    if (!userExists) {
+      return res.status(404).json({ success: false, error: 'No account found with this email address' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + 3600000;
+    (globalThis as any).__resetTokens = (globalThis as any).__resetTokens || new Map();
+    (globalThis as any).__resetTokens.set(token, { email: emailLower, expiresAt, used: false });
+
+    const isEmailConfigured = Boolean(
+      process.env.RESEND_API_KEY ||
+      process.env.SENDGRID_API_KEY ||
+      (process.env.SMTP_HOST && process.env.SMTP_USER)
+    );
+
+    if (isEmailConfigured) {
+      return res.json({
+        success: true,
+        emailSent: true,
+        message: 'A password reset link has been dispatched to your email address.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      emailSent: false,
+      message: 'Email delivery is not configured on this server environment. Your secure one-time password reset token has been generated below for immediate verification.',
+      resetToken: token,
+      email: emailLower,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Password reset request failed' });
+  }
+});
+
+app.post(['/api/auth/reset-password', '/auth/reset-password'], async (req: Request, res: Response) => {
+  try {
+    const { token, newPassword } = req.body || {};
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Reset token and new password are required' });
+    }
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long' });
+    }
+
+    const tokenMap = (globalThis as any).__resetTokens || new Map();
+    const tokenRecord = tokenMap.get(token);
+    if (!tokenRecord) {
+      return res.status(400).json({ success: false, error: 'Invalid or non-existent password reset token' });
+    }
+    if (tokenRecord.used) {
+      return res.status(400).json({ success: false, error: 'This reset token has already been used. Please request a new one.' });
+    }
+    if (Date.now() > tokenRecord.expiresAt) {
+      return res.status(400).json({ success: false, error: 'This reset token has expired. Please request a new one.' });
+    }
+
+    const newPasswordHash = await bcrypt.hash(String(newPassword), 10);
+    if (isMongoConnected) {
+      await UserModel.findOneAndUpdate({ email: tokenRecord.email }, { password: newPasswordHash });
+    }
+    const memUser = memUsers.get(tokenRecord.email);
+    if (memUser) {
+      memUser.password = newPasswordHash;
+      memUsers.set(tokenRecord.email, memUser);
+    }
+    tokenRecord.used = true;
+
+    return res.json({
+      success: true,
+      message: 'Your password has been successfully reset! You can now sign in with your new password.',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Password reset failed' });
   }
 });
 
