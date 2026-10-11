@@ -799,14 +799,14 @@ app.get('/api/db/status', async (_req: Request, res: Response) => {
 // 7.2 Authentication APIs
 app.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
-    const { username, email, password, nativeLanguage = 'en', preferredLanguage = 'en', role = 'user' } = req.body;
+    const { username, email, password, avatar: reqAvatar, profilePicture: reqProfilePic, nativeLanguage, preferredLanguage, role = 'user' } = req.body;
     if (!email || !username) {
       return res.status(400).json({ success: false, error: 'Username and email are required' });
     }
 
     const emailLower = email.toLowerCase().trim();
 
-    // Check existing
+    // Check existing user
     if (isMongoConnected) {
       const existing = await UserModel.findOne({ email: emailLower });
       if (existing) {
@@ -819,15 +819,21 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     const userId = 'usr_' + Date.now();
     const passwordHash = password ? await bcrypt.hash(password, 10) : await bcrypt.hash('defaultpass123', 10);
 
+    const chosenLanguage = preferredLanguage || nativeLanguage || 'en';
+    const cleanUsername = username.trim();
+    const fallbackAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanUsername || 'linguachat_user')}`;
+    const userAvatar = reqAvatar || reqProfilePic || fallbackAvatar;
+    const userProfilePic = reqProfilePic || userAvatar;
+
     const newUserObj = {
       userId,
-      username,
+      username: cleanUsername,
       email: emailLower,
       password: passwordHash,
-      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`,
-      profilePicture: `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`,
-      nativeLanguage,
-      preferredLanguage,
+      avatar: userAvatar,
+      profilePicture: userProfilePic,
+      nativeLanguage: nativeLanguage || chosenLanguage,
+      preferredLanguage: chosenLanguage,
       cameraEnabled: true,
       microphoneEnabled: true,
       googleCalendarConnected: false,
@@ -2699,4 +2705,7 @@ async function startServer() {
 }
 
 startServer();
+
+export default app;
+export { app };
 
